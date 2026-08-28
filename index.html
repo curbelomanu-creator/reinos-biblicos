@@ -20,7 +20,7 @@ html,body{margin:0;height:100%;background:#15110d;color:#ecd9b0;font-family:ui-m
       'game/q06.txt','game/q07.txt','game/q08.txt','game/q09.txt','game/q10.txt','game/q11.txt'
     ];
     const parts=await Promise.all(files.map(async f=>{
-      const r=await fetch(f+'?rev=18fix1',{cache:'no-store'});
+      const r=await fetch(f+'?rev=18fix2',{cache:'no-store'});
       if(!r.ok) throw new Error(`No se pudo cargar ${f}`);
       return (await r.text()).trim();
     }));
@@ -31,10 +31,7 @@ html,body{margin:0;height:100%;background:#15110d;color:#ecd9b0;font-family:ui-m
     const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
     let html=await new Response(stream).text();
 
-    // Corrección v18: en el parche v13 algunas funciones fueron declaradas otra vez
-    // con `function`, lo que provoca hoisting y hace que updateUI se ejecute antes
-    // de que sus referencias previas estén inicializadas. Eso ocultaba la pantalla
-    // inicial y dejaba el canvas negro al elegir un reino.
+    // v13: corregir declaraciones de funciones que causaban hoisting/TDZ.
     const v13Start=html.indexOf('// v13 PATCH');
     const v14Start=html.indexOf('// v14 PATCH');
     if(v13Start>=0 && v14Start>v13Start){
@@ -47,6 +44,35 @@ html,body{margin:0;height:100%;background:#15110d;color:#ecd9b0;font-family:ui-m
              .replace('function updateUI(){','updateUI = function(){');
       html=before+v13+after;
     }
+
+    // v14: varias funciones que extendían sistemas anteriores se declararon con
+    // `function`. El hoisting hacía que drawShips/drawCheckpoint se capturaran a
+    // sí mismas y entraran en recursión infinita. Eso detenía el render justo
+    // antes de drawMini(), dejando el minimapa oscuro y la cámara sin refrescar.
+    const a14=html.indexOf('// v14 PATCH');
+    const a15=html.indexOf('// v15 PATCH');
+    if(a14>=0 && a15>a14){
+      let before=html.slice(0,a14);
+      let v14=html.slice(a14,a15);
+      let after=html.slice(a15);
+      const fixes=[
+        ['function selectedInfo(){','selectedInfo = function(){'],
+        ['function updateArmyMotion(dt){','updateArmyMotion = function(dt){'],
+        ['function drawShips(){','drawShips = function(){'],
+        ['function drawCheckpoint(cp){','drawCheckpoint = function(cp){'],
+        ['function drawCity(c){','drawCity = function(c){'],
+        ['function drawArmy(a){','drawArmy = function(a){'],
+        ['function render(){','render = function(){'],
+        ['function renderBattle(){','renderBattle = function(){'],
+        ['function tick(){','tick = function(){']
+      ];
+      for(const [oldText,newText] of fixes) v14=v14.replace(oldText,newText);
+      html=before+v14+after;
+    }
+
+    // Mejorar interacción y asegurar que el minimapa quede por encima de ayudas.
+    html=html.replace('canvas#game{display:block;','canvas#game{touch-action:none;display:block;')
+             .replace('#miniWrap{position:absolute;','#miniWrap{z-index:25;position:absolute;');
 
     document.open();
     document.write(html);
