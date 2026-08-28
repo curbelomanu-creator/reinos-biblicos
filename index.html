@@ -10,21 +10,29 @@ html,body{margin:0;height:100%;background:#15110d;color:#ecd9b0;font-family:ui-m
 </style>
 </head>
 <body>
-<div id="loading"><div><h1>REINOS BÍBLICOS</h1><p>Cargando campaña v19…</p></div></div>
+<div id="loading"><div><h1>REINOS BÍBLICOS</h1><p id="loadStatus">Cargando campaña v19…</p></div></div>
 <script>
 (async()=>{
   try{
     const files=[
-      'game/v19_00.txt','game/v19_01.txt','game/v19_02.txt','game/v19_03.txt',
+      'game/v19_00.txt',
+      'game/v19_01a.txt','game/v19_01b.txt','game/v19_01c.txt',
+      'game/v19_02.txt',
+      'game/v19_03a.txt','game/v19_03b.txt','game/v19_03c.txt',
       'game/v19_04.txt','game/v19_05.txt','game/v19_06.txt','game/v19_07.txt'
     ];
-    const parts=await Promise.all(files.map(async f=>{
-      const r=await fetch(f+'?rev=19fix1',{cache:'no-store'});
-      if(!r.ok) throw new Error(`No se pudo cargar ${f}`);
+    const status=document.getElementById('loadStatus');
+    const parts=[];
+    for(let i=0;i<files.length;i++){
+      const f=files[i];
+      status.textContent=`Cargando campaña v19… ${i+1}/${files.length}`;
+      let r;
+      try{r=await fetch('./'+f+'?v=19fix3',{cache:'no-store'});}catch(e){throw new Error(`Fallo de red al cargar ${f}`);}
+      if(!r.ok) throw new Error(`No se pudo cargar ${f} (HTTP ${r.status})`);
       const clean=(await r.text()).replace(/\s+/g,'');
       if(!/^[A-Za-z0-9+/]*={0,2}$/.test(clean)) throw new Error(`Fragmento Base64 corrupto: ${f}`);
-      return clean;
-    }));
+      parts.push(clean);
+    }
     const b64=parts.join('');
     if(b64.length%4!==0) throw new Error(`Base64 incompleto: longitud ${b64.length}`);
     const bin=atob(b64);
@@ -33,11 +41,10 @@ html,body{margin:0;height:100%;background:#15110d;color:#ecd9b0;font-family:ui-m
     const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
     let html=await new Response(stream).text();
 
-    // Compatibilidad v13: evita hoisting/TDZ en extensiones antiguas.
     const v13Start=html.indexOf('// v13 PATCH');
     const v14Start=html.indexOf('// v14 PATCH');
     if(v13Start>=0 && v14Start>v13Start){
-      let before=html.slice(0,v13Start), v13=html.slice(v13Start,v14Start), after=html.slice(v14Start);
+      let before=html.slice(0,v13Start),v13=html.slice(v13Start,v14Start),after=html.slice(v14Start);
       v13=v13.replace('function totalProd(){','totalProd = function(){')
              .replace('function recruit(type){','recruit = function(type){')
              .replace('function fortify(){','fortify = function(){')
@@ -45,11 +52,10 @@ html,body{margin:0;height:100%;background:#15110d;color:#ecd9b0;font-family:ui-m
       html=before+v13+after;
     }
 
-    // Compatibilidad v14: evita capturas recursivas por function hoisting.
     const a14=html.indexOf('// v14 PATCH');
     const a15=html.indexOf('// v15 PATCH');
-    if(a14>=0 && a15>a14){
-      let before=html.slice(0,a14), v14=html.slice(a14,a15), after=html.slice(a15);
+    if(a14>=0&&a15>a14){
+      let before=html.slice(0,a14),v14=html.slice(a14,a15),after=html.slice(a15);
       const fixes=[
         ['function selectedInfo(){','selectedInfo = function(){'],
         ['function updateArmyMotion(dt){','updateArmyMotion = function(dt){'],
@@ -61,16 +67,13 @@ html,body{margin:0;height:100%;background:#15110d;color:#ecd9b0;font-family:ui-m
         ['function renderBattle(){','renderBattle = function(){'],
         ['function tick(){','tick = function(){']
       ];
-      for(const [oldText,newText] of fixes) v14=v14.replace(oldText,newText);
+      for(const [oldText,newText] of fixes)v14=v14.replace(oldText,newText);
       html=before+v14+after;
     }
 
     html=html.replace('canvas#game{display:block;','canvas#game{touch-action:none;display:block;')
              .replace('#miniWrap{position:absolute;','#miniWrap{z-index:25;position:absolute;');
-
-    document.open();
-    document.write(html);
-    document.close();
+    document.open();document.write(html);document.close();
   }catch(err){
     document.getElementById('loading').innerHTML=`<div><h1>Error al cargar</h1><p>${String(err)}</p></div>`;
     console.error(err);
