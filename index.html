@@ -20,7 +20,7 @@ html,body{margin:0;height:100%;background:#15110d;color:#ecd9b0;font-family:ui-m
       'game/q06.txt','game/q07.txt','game/q08.txt','game/q09.txt','game/q10.txt','game/q11.txt'
     ];
     const parts=await Promise.all(files.map(async f=>{
-      const r=await fetch(f,{cache:'force-cache'});
+      const r=await fetch(f+'?rev=18fix1',{cache:'no-store'});
       if(!r.ok) throw new Error(`No se pudo cargar ${f}`);
       return (await r.text()).trim();
     }));
@@ -29,7 +29,25 @@ html,body{margin:0;height:100%;background:#15110d;color:#ecd9b0;font-family:ui-m
     const bytes=new Uint8Array(bin.length);
     for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
     const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
-    const html=await new Response(stream).text();
+    let html=await new Response(stream).text();
+
+    // Corrección v18: en el parche v13 algunas funciones fueron declaradas otra vez
+    // con `function`, lo que provoca hoisting y hace que updateUI se ejecute antes
+    // de que sus referencias previas estén inicializadas. Eso ocultaba la pantalla
+    // inicial y dejaba el canvas negro al elegir un reino.
+    const v13Start=html.indexOf('// v13 PATCH');
+    const v14Start=html.indexOf('// v14 PATCH');
+    if(v13Start>=0 && v14Start>v13Start){
+      let before=html.slice(0,v13Start);
+      let v13=html.slice(v13Start,v14Start);
+      let after=html.slice(v14Start);
+      v13=v13.replace('function totalProd(){','totalProd = function(){')
+             .replace('function recruit(type){','recruit = function(type){')
+             .replace('function fortify(){','fortify = function(){')
+             .replace('function updateUI(){','updateUI = function(){');
+      html=before+v13+after;
+    }
+
     document.open();
     document.write(html);
     document.close();
