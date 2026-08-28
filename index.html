@@ -3,24 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Reinos Bíblicos v18</title>
+<title>Reinos Bíblicos v19</title>
 <style>
 html,body{margin:0;height:100%;background:#15110d;color:#ecd9b0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 #loading{height:100%;display:grid;place-items:center;text-align:center;padding:24px}
 </style>
 </head>
 <body>
-<div id="loading"><div><h1>REINOS BÍBLICOS</h1><p>Cargando campaña v18…</p></div></div>
+<div id="loading"><div><h1>REINOS BÍBLICOS</h1><p>Cargando campaña v19…</p></div></div>
 <script>
 (async()=>{
   try{
     const files=[
-      'game/p00.txt','game/p01.txt','game/p02.txt','game/p03.txt','game/p04.txt','game/p05.txt',
-      'game/q00.txt','game/q01.txt','game/q02.txt','game/q03.txt','game/q04.txt','game/q05.txt',
-      'game/q06.txt','game/q07.txt','game/q08.txt','game/q09.txt','game/q10.txt','game/q11.txt'
+      'game/v19_00.txt','game/v19_01.txt','game/v19_02.txt','game/v19_03.txt',
+      'game/v19_04.txt','game/v19_05.txt','game/v19_06.txt','game/v19_07.txt'
     ];
     const parts=await Promise.all(files.map(async f=>{
-      const r=await fetch(f+'?rev=18fix2',{cache:'no-store'});
+      const r=await fetch(f+'?rev=19',{cache:'no-store'});
       if(!r.ok) throw new Error(`No se pudo cargar ${f}`);
       return (await r.text()).trim();
     }));
@@ -31,7 +30,7 @@ html,body{margin:0;height:100%;background:#15110d;color:#ecd9b0;font-family:ui-m
     const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
     let html=await new Response(stream).text();
 
-    // v13: corregir declaraciones de funciones que causaban hoisting/TDZ.
+    // Compatibilidad heredada v13: evita hoisting/TDZ en extensiones antiguas.
     const v13Start=html.indexOf('// v13 PATCH');
     const v14Start=html.indexOf('// v14 PATCH');
     if(v13Start>=0 && v14Start>v13Start){
@@ -45,10 +44,7 @@ html,body{margin:0;height:100%;background:#15110d;color:#ecd9b0;font-family:ui-m
       html=before+v13+after;
     }
 
-    // v14: varias funciones que extendían sistemas anteriores se declararon con
-    // `function`. El hoisting hacía que drawShips/drawCheckpoint se capturaran a
-    // sí mismas y entraran en recursión infinita. Eso detenía el render justo
-    // antes de drawMini(), dejando el minimapa oscuro y la cámara sin refrescar.
+    // Compatibilidad heredada v14: evita autorreferencias por hoisting.
     const a14=html.indexOf('// v14 PATCH');
     const a15=html.indexOf('// v15 PATCH');
     if(a14>=0 && a15>a14){
@@ -70,7 +66,7 @@ html,body{margin:0;height:100%;background:#15110d;color:#ecd9b0;font-family:ui-m
       html=before+v14+after;
     }
 
-    // Mejorar interacción y asegurar que el minimapa quede por encima de ayudas.
+    // Interacción robusta y minimapa visible.
     html=html.replace('canvas#game{display:block;','canvas#game{touch-action:none;display:block;')
              .replace('#miniWrap{position:absolute;','#miniWrap{z-index:25;position:absolute;');
 
