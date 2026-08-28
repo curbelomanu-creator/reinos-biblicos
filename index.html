@@ -1,112 +1,43 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Reinos Bíblicos — Pixel Strategy v18</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reinos Bíblicos v18</title>
 <style>
-  :root{
-    --bg:#15110d; --panel:#241d16; --panel2:#31271d; --line:#6b563a;
-    --text:#ecd9b0; --muted:#b8a079; --gold:#e0ba5d; --red:#a65a49;
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--text);
-    font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace}
-  #app{display:grid;grid-template-columns:minmax(0,1fr) 360px;height:100vh}
-  #wrap{position:relative;min-width:0;background:#0c1012}
-  canvas#game{display:block;width:100%;height:100%;image-rendering:pixelated;cursor:grab}
-  canvas#game.dragging{cursor:grabbing}
-  #top{position:absolute;left:10px;top:10px;right:10px;display:flex;gap:7px;flex-wrap:wrap;pointer-events:none}
-  .pill{background:#1b1712eb;border:2px solid #5f4b33;padding:7px 10px;font-size:12px;box-shadow:3px 3px #090705}
-  #help{position:absolute;left:10px;bottom:10px;background:#1b1712ed;border:2px solid #5f4b33;padding:8px 10px;font-size:10px;line-height:1.5;pointer-events:none}
-  #miniWrap{position:absolute;right:12px;bottom:12px;width:220px;height:150px;border:3px solid #5f4b33;background:#17120e;box-shadow:3px 3px #090705}
-  #mini{width:100%;height:100%;display:block;image-rendering:pixelated;cursor:pointer}
-  #side{background:var(--panel);border-left:4px solid #5f4b33;padding:14px;overflow:auto}
-  h1{font-size:18px;margin:0;color:#f0d58a}
-  h2{font-size:14px;margin:16px 0 8px;color:#e7c56e}
-  .small{font-size:11px;line-height:1.48;color:var(--muted)}
-  .card{background:var(--panel2);border:2px solid #6d583b;padding:10px;box-shadow:3px 3px #130f0b;margin:8px 0}
-  .row{display:flex;justify-content:space-between;gap:8px;margin:4px 0;font-size:12px}
-  .tag{display:inline-block;border:1px solid #7a6240;padding:2px 5px;margin:2px 2px 2px 0;font-size:10px}
-  .bar{height:8px;background:#17120d;border:1px solid #745d3e;margin:5px 0}
-  .bar>i{display:block;height:100%;background:#b18b4a}
-  button{width:100%;margin:4px 0;padding:8px 7px;background:#4e3d29;border:2px solid #89704a;color:#f5e5c0;font-family:inherit;font-weight:700;cursor:pointer;box-shadow:2px 2px #100c09}
-  button:hover{background:#604b31}
-  button.red{background:#5a3028;border-color:#96584b}
-  button.green{background:#38482e;border-color:#667b51}
-  button.blue{background:#2f4652;border-color:#537789}
-  button:disabled{opacity:.43;cursor:not-allowed}
-  .choice{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;border-top:1px solid #5c4931;padding:7px 0}
-  #log{font-size:11px;line-height:1.45;max-height:240px;overflow:auto;background:#17120e;border:1px solid #56432d;padding:8px}
-  .battle{border-color:#9b6048;background:#39251e}
-  .siege{border-color:#9a784a;background:#3a2e1d}
-
-  #startScreen{position:absolute;inset:0;z-index:30;background:rgba(12,10,8,.92);display:flex;align-items:center;justify-content:center;padding:24px}
-  #startScreen.hidden{display:none}
-  .startBox{width:min(860px,96%);max-height:88%;overflow:auto;background:#251e16;border:4px solid #70593a;padding:20px;box-shadow:8px 8px #080604}
-  .startBox h2{font-size:20px;margin:0 0 6px;color:#f0d58a}
-  .factionGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:15px}
-  .factionPick{display:grid;grid-template-columns:48px 1fr;gap:10px;text-align:left;align-items:center;min-height:72px}
-  .factionShield{width:42px;height:42px;border-radius:50%;border:3px solid #d4bd88;display:grid;place-items:center;color:#fff;font-weight:900;font-size:13px;text-shadow:1px 1px #000}
-  .routeHint{position:absolute;pointer-events:none;border:2px solid #f0d78a;background:#16110ddc;color:#f3e2bb;padding:4px 6px;font-size:10px;display:none;z-index:8}
-  .battleTitle{font-size:18px;color:#ffd28c;margin-bottom:6px}
-  .battleButtons{display:grid;grid-template-columns:repeat(2,1fr);gap:5px}
-  .battleButtons button{margin:0}
-  @media(max-width:620px){.factionGrid{grid-template-columns:1fr}}
-
-  @media(max-width:950px){
-    #app{grid-template-columns:1fr}
-    #side{position:absolute;right:0;top:0;width:330px;height:100%;z-index:5;background:#241d16f5}
-    #miniWrap{right:345px}
-  }
+html,body{margin:0;height:100%;background:#15110d;color:#ecd9b0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+#loading{height:100%;display:grid;place-items:center;text-align:center;padding:24px}
 </style>
 </head>
 <body>
-<div id="app">
-  <div id="wrap">
-    <div id="startScreen">
-      <div class="startBox">
-        <h2>ELIGE TU REINO / POTENCIA</h2>
-        <div class="small">La campaña comienza enfocada en la capital. Las zonas coloreadas muestran control territorial y cambian cuando una ciudad es conquistada. Los emblemas son símbolos estilizados para el videojuego, no escudos históricos certificados.</div>
-        <div class="factionGrid">
-          <button class="factionPick" onclick="startFaction('Judá')"><span class="factionShield" style="background:#8a7333">JD</span><span><b>Reino de Judá</b><br><span class="small">Capital: Jerusalén</span></span></button>
-          <button class="factionPick" onclick="startFaction('Israel')"><span class="factionShield" style="background:#37657d">IS</span><span><b>Reino de Israel</b><br><span class="small">Capital: Samaria</span></span></button>
-          <button class="factionPick" onclick="startFaction('Filistea')"><span class="factionShield" style="background:#793f3b">PF</span><span><b>Pentápolis filistea</b><br><span class="small">Inicio de campaña: Gaza</span></span></button>
-          <button class="factionPick" onclick="startFaction('Moab')"><span class="factionShield" style="background:#6e5535">MB</span><span><b>Reino de Moab</b><br><span class="small">Capital de juego: Dibón</span></span></button>
-          <button class="factionPick" onclick="startFaction('Edom')"><span class="factionShield" style="background:#824b2c">ED</span><span><b>Reino de Edom</b><br><span class="small">Capital de juego: Bosra</span></span></button>
-          <button class="factionPick" onclick="startFaction('Aram')"><span class="factionShield" style="background:#376346">AR</span><span><b>Aram-Damasco</b><br><span class="small">Capital: Damasco</span></span></button>
-          <button class="factionPick" onclick="startFaction('Tiro')"><span class="factionShield" style="background:#67477b">TR</span><span><b>Reino / ciudad-estado de Tiro</b><br><span class="small">Capital: Tiro</span></span></button>
-          <button class="factionPick" onclick="startFaction('Asiria')"><span class="factionShield" style="background:#504b66">AS</span><span><b>Imperio neoasirio</b><br><span class="small">Capital: Nínive</span></span></button>
-        </div>
-      </div>
-    </div>
-    <div id="routeHint" class="routeHint"></div>
-    <canvas id="game" width="1480" height="940"></canvas>
-    <div id="top"></div>
-    <div id="help">
-      ARRASTRA = mover mapa · RUEDA = zoom · WASD/FLECHAS = mover cámara<br>
-      CLICK = seleccionar · CLIC DERECHO = destino<br>
-      El ejército calcula la ruta y marcha por caminos y puestos automáticamente
-    </div>
-    <div id="miniWrap"><canvas id="mini" width="220" height="150"></canvas></div>
-  </div>
-  <aside id="side">
-    <h1>REINOS BÍBLICOS v6</h1>
-    <div class="small">Campaña territorial · formaciones · murallas destruibles · asedios RTS</div>
-    <div id="panel"></div>
-    <h2>CRÓNICA</h2>
-    <div id="log"></div>
-  </aside>
-</div>
-
-<script src="js/00-core-a.js"></script>
-<script src="js/01-core-b.js"></script>
-<script src="js/02-core-c-v7.js"></script>
-<script src="js/03-v8-v10.js"></script>
-<script src="js/04-v11-v13.js"></script>
-<script src="js/05-v14.js"></script>
-<script src="js/06-v15-v16.js"></script>
-<script src="js/07-v17.js"></script>
-<script src="js/08-v18.js"></script>
+<div id="loading"><div><h1>REINOS BÍBLICOS</h1><p>Cargando campaña v18…</p></div></div>
+<script>
+(async()=>{
+  try{
+    const files=[
+      'game/p00.txt','game/p01.txt','game/p02.txt','game/p03.txt','game/p04.txt','game/p05.txt',
+      'game/q00.txt','game/q01.txt','game/q02.txt','game/q03.txt','game/q04.txt','game/q05.txt',
+      'game/q06.txt','game/q07.txt','game/q08.txt','game/q09.txt','game/q10.txt','game/q11.txt'
+    ];
+    const parts=await Promise.all(files.map(async f=>{
+      const r=await fetch(f,{cache:'force-cache'});
+      if(!r.ok) throw new Error(`No se pudo cargar ${f}`);
+      return (await r.text()).trim();
+    }));
+    const b64=parts.join('');
+    const bin=atob(b64);
+    const bytes=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+    const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+    const html=await new Response(stream).text();
+    document.open();
+    document.write(html);
+    document.close();
+  }catch(err){
+    document.getElementById('loading').innerHTML=`<div><h1>Error al cargar</h1><p>${String(err)}</p></div>`;
+    console.error(err);
+  }
+})();
+</script>
 </body>
 </html>
